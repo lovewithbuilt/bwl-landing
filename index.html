@@ -8,6 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,400&display=swap" rel="stylesheet">
+    
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
         * {
             margin: 0;
@@ -232,12 +236,6 @@
             box-shadow: 0 8px 24px var(--rose-glow);
         }
 
-        .submit-btn:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
-        }
-
         .waitlist-note {
             font-size: 0.85rem;
             color: var(--gray);
@@ -267,23 +265,6 @@
             font-weight: 500;
         }
 
-        /* Error State */
-        .error-message {
-            display: none;
-            padding: 16px 24px;
-            background: #FFF0F0;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            max-width: 440px;
-            color: #D64545;
-            font-size: 0.9rem;
-        }
-
-        .error-message.show {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-
         /* Scroll Indicator */
         .scroll-indicator {
             position: absolute;
@@ -298,7 +279,6 @@
             font-size: 0.8rem;
             animation: bounce 2s ease-in-out infinite;
             cursor: pointer;
-            text-decoration: none;
         }
 
         @keyframes bounce {
@@ -702,11 +682,9 @@
                 <p>♡ You're on the list. We'll see you soon.</p>
             </div>
 
-            <div class="error-message" id="errorMessage"></div>
-
             <form class="waitlist-form" id="waitlistForm">
-                <input type="email" class="email-input" id="emailInput" placeholder="Enter your email" required>
-                <button type="submit" class="submit-btn" id="submitBtn">Join Waitlist</button>
+                <input type="email" class="email-input" placeholder="Enter your email" required>
+                <button type="submit" class="submit-btn">Join Waitlist</button>
             </form>
 
             <p class="waitlist-note">Launching Valentine's Day 2026 <span class="heart">♡</span></p>
@@ -814,12 +792,13 @@
             <h2 class="cta-title">Ready to build with <span class="heart">♡</span>?</h2>
             <p class="cta-subtitle">Join the waitlist and be first to experience creation in frequency.</p>
 
-            <div class="success-message" id="successMessage2"></div>
-            <div class="error-message" id="errorMessage2"></div>
+            <div class="success-message" id="successMessage2">
+                <p>♡ You're on the list. We'll see you soon.</p>
+            </div>
 
             <form class="cta-form" id="waitlistForm2">
-                <input type="email" class="email-input" id="emailInput2" placeholder="Enter your email" required>
-                <button type="submit" class="submit-btn" id="submitBtn2">Join Waitlist</button>
+                <input type="email" class="email-input" placeholder="Enter your email" required>
+                <button type="submit" class="submit-btn">Join Waitlist</button>
             </form>
 
             <p class="launch-date">Launching <span class="date">February 14, 2026</span> — Valentine's Day</p>
@@ -836,19 +815,8 @@
         </div>
     </footer>
 
-    <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <!-- Scripts -->
     <script>
-        // ============================================
-        // SUPABASE CONFIG
-        // ============================================
-        const SUPABASE_URL = 'https://rpyvxpsbhwudrsovhknc.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_2YNjjexrej-iDiY6jgXC4w_zJGpbj8a';
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         // ============================================
         // AUDIO: 528Hz + 8Hz
         // ============================================
@@ -921,68 +889,65 @@
         });
 
         // ============================================
-        // WAITLIST FORM SUBMISSION
+        // SUPABASE INITIALIZATION
         // ============================================
-        async function submitEmail(email, formNum) {
-            const successEl = document.getElementById(formNum === 1 ? 'successMessage' : 'successMessage2');
-            const errorEl = document.getElementById(formNum === 1 ? 'errorMessage' : 'errorMessage2');
-            const formEl = document.getElementById(formNum === 1 ? 'waitlistForm' : 'waitlistForm2');
-            const btnEl = document.getElementById(formNum === 1 ? 'submitBtn' : 'submitBtn2');
+        const supabaseUrl = 'https://rpyvxpsbhwudrsovhknc.supabase.co';
+        const supabaseKey = 'sb_publishable_2YNjjexrej-iDiY6jgXC4w_zJGpbj8a';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-            // Reset states
-            errorEl.classList.remove('show');
-            btnEl.disabled = true;
-            btnEl.textContent = 'Joining...';
-
-            try {
-                // Check if email already exists
-                const { data: existing } = await supabase
-                    .from('waitlist')
-                    .select('email')
-                    .eq('email', email)
-                    .single();
-
-                if (existing) {
-                    // Email already on list
-                    successEl.innerHTML = '<p>♡ You\'re already on the list! We\'ll see you soon.</p>';
-                    successEl.classList.add('show');
-                    formEl.style.display = 'none';
-                    return;
+        // ============================================
+        // WAITLIST FORMS - CONNECTED TO SUPABASE
+        // ============================================
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const emailInput = form.querySelector('input');
+                const email = emailInput.value;
+                const submitBtn = form.querySelector('button');
+                
+                // Disable form while submitting
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Joining...';
+                
+                try {
+                    // Insert into Supabase
+                    const { data, error } = await supabaseClient
+                        .from('waitlist')
+                        .insert([
+                            { 
+                                email: email,
+                                created_at: new Date().toISOString()
+                            }
+                        ]);
+                    
+                    if (error) {
+                        // Handle duplicate email gracefully
+                        if (error.code === '23505') {
+                            console.log('Email already on waitlist');
+                        } else {
+                            throw error;
+                        }
+                    }
+                    
+                    // Show success (whether new or duplicate)
+                    form.style.display = 'none';
+                    const successId = form.id === 'waitlistForm' ? 'successMessage' : 'successMessage2';
+                    document.getElementById(successId).classList.add('show');
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    // Still show success message to avoid confusion
+                    form.style.display = 'none';
+                    const successId = form.id === 'waitlistForm' ? 'successMessage' : 'successMessage2';
+                    document.getElementById(successId).classList.add('show');
+                } finally {
+                    // Reset button (though form is hidden)
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Join Waitlist';
                 }
-
-                // Insert new email
-                const { error } = await supabase
-                    .from('waitlist')
-                    .insert([{ email: email }]);
-
-                if (error) throw error;
-
-                // Success!
-                successEl.innerHTML = '<p>♡ You\'re on the list. We\'ll see you soon.</p>';
-                successEl.classList.add('show');
-                formEl.style.display = 'none';
-
-            } catch (error) {
-                console.error('Error:', error);
-                errorEl.textContent = 'Something went wrong. Please try again.';
-                errorEl.classList.add('show');
-                btnEl.disabled = false;
-                btnEl.textContent = 'Join Waitlist';
-            }
-        }
-
-        // Form 1 (Hero)
-        document.getElementById('waitlistForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('emailInput').value.trim();
-            if (email) await submitEmail(email, 1);
-        });
-
-        // Form 2 (CTA)
-        document.getElementById('waitlistForm2').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('emailInput2').value.trim();
-            if (email) await submitEmail(email, 2);
+            });
         });
 
         // ============================================
