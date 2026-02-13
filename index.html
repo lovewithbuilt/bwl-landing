@@ -687,7 +687,7 @@
                 <button type="submit" class="submit-btn">Join Waitlist</button>
             </form>
 
-            <p class="waitlist-note"><span class="heart">♡</span></p>
+            <p class="waitlist-note">Launching Valentine's Day 2026 <span class="heart">♡</span></p>
         </div>
 
         <a href="#features" class="scroll-indicator">
@@ -800,6 +800,8 @@
                 <input type="email" class="email-input" placeholder="Enter your email" required>
                 <button type="submit" class="submit-btn">Join Waitlist</button>
             </form>
+
+            <p class="launch-date">Launching <span class="date">February 14, 2026</span> - Valentine's Day</p>
         </div>
     </section>
 
@@ -874,6 +876,25 @@
             if (oscillatorLeft) { oscillatorLeft.stop(); oscillatorLeft = null; }
             if (oscillatorRight) { oscillatorRight.stop(); oscillatorRight = null; }
         }
+
+        // ============================================
+        // AUTO-START FREQUENCY ON FIRST INTERACTION
+        // ============================================
+        let hasStartedAudio = false;
+        
+        function tryAutoStart() {
+            if (!hasStartedAudio && !audioToggle.classList.contains('active')) {
+                hasStartedAudio = true;
+                audioToggle.classList.add('active');
+                startFrequency();
+            }
+        }
+
+        // Start on first scroll
+        window.addEventListener('scroll', tryAutoStart, { once: true });
+        
+        // Or on first click anywhere
+        document.addEventListener('click', tryAutoStart, { once: true });
 
         // Toggle
         const audioToggle = document.getElementById('audioToggle');
